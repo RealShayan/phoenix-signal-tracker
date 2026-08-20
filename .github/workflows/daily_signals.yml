@@ -1,0 +1,36 @@
+name: Daily Signal Generation
+
+on:
+  schedule:
+    # هر روز ساعت 8 صبح به وقت تهران (4:30 UTC)
+    - cron: '30 4 * * *'
+  workflow_dispatch:  # امکان اجرای دستی
+
+jobs:
+  generate-signals:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Generate signals
+      run: |
+        python scripts/generate_signals.py
+    
+    - name: Commit and push changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add data/signals.json
+        git diff --quiet && git diff --staged --quiet || (git commit -m "Update signals.json - $(date +'%Y-%m-%d %H:%M:%S')" && git push)
