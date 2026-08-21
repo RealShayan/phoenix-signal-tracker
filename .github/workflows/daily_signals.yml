@@ -6,6 +6,8 @@ on:
     - cron: '30 4 * * *'
   workflow_dispatch:  # امکان اجرای دستی
 
+permissions:
+  contents: write
 jobs:
   generate-signals:
     runs-on: ubuntu-latest
