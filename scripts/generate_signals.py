@@ -32,7 +32,7 @@ EXTENDED_SYMBOLS = [
 
 OUTPUT_DIR = "data"
 OUTPUT_FILE = os.path.join(OUTPUT_DIR, "signals.json")
-MIN_CONFIDENCE = 45.0
+MIN_CONFIDENCE = 20.0
 
 # ---------------------------------------------------------
 # دریافت داده‌ها از MEXC API (اصلاح‌شده)
