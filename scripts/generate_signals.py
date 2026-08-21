@@ -18,7 +18,7 @@ from sklearn.metrics import classification_report, accuracy_score
 
 print("=" * 60)
 print("🚀 Phoenix Signal Tracker - شروع اجرا")
-print(f"⏰ زمان: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+print(f" زمان: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 print("=" * 60)
 
 # ---------------------------------------------------------
@@ -35,10 +35,10 @@ OUTPUT_FILE = os.path.join(OUTPUT_DIR, "signals.json")
 MIN_CONFIDENCE = 55.0
 
 # ---------------------------------------------------------
-# دریافت داده‌ها از MEXC API
+# دریافت داده‌ها از MEXC API (اصلاح‌شده)
 # ---------------------------------------------------------
 def get_mexc_candles(symbol, interval='1d', limit=200):
-    """دریافت کندل‌ها از API MEXC"""
+    """دریافت کندل‌ها از API MEXC - نسخه اصلاح‌شده"""
     url = "https://api.mexc.com/api/v3/klines"
     params = {
         'symbol': symbol,
@@ -48,25 +48,50 @@ def get_mexc_candles(symbol, interval='1d', limit=200):
     
     try:
         response = requests.get(url, params=params, timeout=10)
-        if response.status_code == 200:
-            data = response.json()
-            if data:
-                df = pd.DataFrame(data, columns=[
+        
+        if response.status_code != 200:
+            print(f"⚠️ خطای HTTP {response.status_code} برای {symbol}")
+            return None
+        
+        data = response.json()
+        
+        # چک کردن اینکه data آرایه است و خالی نیست
+        if not isinstance(data, list) or len(data) == 0:
+            print(f"⚠️ داده‌ای برای {symbol} یافت نشد")
+            return None
+        
+        # بررسی ساختار داده - MEXC ممکنه ۸ یا ۱ ستون برگردونه
+        first_candle = data[0]
+        print(f"📊 {symbol}: تعداد ستون‌ها = {len(first_candle)}")
+        
+        if len(first_candle) >= 8:
+            # ساختار ۸ ستونی یا بیشتر
+            df = pd.DataFrame(data, columns=[
+                'timestamp', 'open', 'high', 'low', 'close', 
+                'volume', 'close_time', 'quote_volume'
+            ])
+            
+            # اگر ۱۲ ستون هست، بقیه رو هم اضافه کن
+            if len(first_candle) >= 12:
+                df.columns = [
                     'timestamp', 'open', 'high', 'low', 'close', 
-                    'volume', 'close_time', 'quote_volume', 'trades', 
+                    'volume', 'close_time', 'quote_volume', 'trades',
                     'taker_buy_base', 'taker_buy_quote', 'ignore'
-                ])
-                
-                for col in ['open', 'high', 'low', 'close', 'volume']:
-                    df[col] = pd.to_numeric(df[col])
-                
-                df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-                df['symbol'] = symbol
-                
-                return df[['timestamp', 'symbol', 'open', 'high', 'low', 'close', 'volume']]
+                ]
+            
+            # تبدیل ستون‌های عددی
+            for col in ['open', 'high', 'low', 'close', 'volume']:
+                df[col] = pd.to_numeric(df[col])
+            
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+            df['symbol'] = symbol
+            
+            return df[['timestamp', 'symbol', 'open', 'high', 'low', 'close', 'volume']]
+        
         return None
+        
     except Exception as e:
-        print(f"⚠️ خطا در دریافت {symbol}: {e}")
+        print(f"️ خطا در دریافت {symbol}: {e}")
         return None
 
 print("\n🔄 در حال دریافت داده‌های تاریخی از MEXC...")
@@ -76,7 +101,17 @@ for sym in EXTENDED_SYMBOLS:
     if df is not None:
         all_data.append(df)
         print(f"✅ {sym}: {len(df)} کندل دریافت شد")
+    else:
+        print(f"❌ {sym}: دریافت داده با شکست مواجه شد")
     time.sleep(0.3)
+
+# چک کردن اینکه داده‌ای داریم یا نه
+if len(all_data) == 0:
+    print("\n❌ هیچ داده‌ای دریافت نشد! بررسی کنید:")
+    print("  1. آیا API MEXC در دسترس است؟")
+    print("  2. آیا فرمت نمادها درست است؟ (BTCUSDT نه BTC-USDT)")
+    print("  3. آیا به اینترنت دسترسی دارید؟")
+    exit(1)
 
 final_df = pd.concat(all_data, ignore_index=True)
 print(f"\n📊 دیتاست نهایی: {len(final_df)} ردیف")
@@ -272,7 +307,7 @@ print(f"\n✅ تعداد سیگنال‌ها: {len(output_picks)}")
 strong_signals = output_picks[output_picks['signal_confidence %'] >= MIN_CONFIDENCE].reset_index(drop=True)
 
 if len(strong_signals) == 0:
-    print("⚠️ هیچ سیگنال قوی یافت نشد")
+    print("️ هیچ سیگنال قوی یافت نشد")
     strong_signals = pd.DataFrame()
 
 signals_json = strong_signals.to_json(orient='records', indent=4, force_ascii=False)
