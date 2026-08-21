@@ -294,6 +294,20 @@ for sym in EXTENDED_SYMBOLS:
         'relative_strength': round(last_row['relative_strength'], 2)
     })
 
+# چک کردن اینکه سیگنالی تولید شده یا نه
+if len(live_signals) == 0:
+    print("\n⚠️ هیچ سیگنالی با اطمینان >= 55% تولید نشد")
+    print("💡 مدل برای هیچ کوینی قطعیت کافی نداشته")
+    
+    # ساخت فایل JSON خالی
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    with open(OUTPUT_FILE, "w", encoding='utf-8') as f:
+        f.write("[]")
+    
+    print(f"\n💾 فایل خالی ذخیره شد: {OUTPUT_FILE}")
+    exit(0)
+
+# اگر سیگنال داریم، مرتب‌سازی کن
 output_picks = pd.DataFrame(live_signals).sort_values(
     by='signal_confidence %', 
     ascending=False
